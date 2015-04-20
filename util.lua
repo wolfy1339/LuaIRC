@@ -50,6 +50,9 @@ function parse(line)
 	return prefix, cmd, params
 end
 
+function parseWhoAccess(acs)
+	return acs:match("([%+@]?)$")
+end
 function parseNick(nick)
 	local access, name = nick:match("^([%+@]*)(.+)$")
 	return parseAccess(access or ""), name
@@ -59,6 +62,7 @@ function parsePrefix(prefix)
 	local user = {}
 	if prefix then
 		user.access, user.nick, user.username, user.host = prefix:match("^([%+@]*)(.+)!(.+)@(.+)$")
+		user.fullhost = prefix
 	end
 	user.access = parseAccess(user.access or "")
 	return user

@@ -17,7 +17,12 @@ handlers["001"] = function(o, prefix, me)
 end
 
 handlers["PRIVMSG"] = function(o, prefix, channel, message)
-	o:invoke("OnChat", parsePrefix(prefix), channel, message)
+	if message:sub(1,1) == "\001" then
+		local space = message:find(" ") or #message
+		o:invoke("OnCTCP", parsePrefix(prefix), channel, message:sub(2, space-1):upper(), message:sub(space+1,#message-1))
+	else
+		o:invoke("OnChat", parsePrefix(prefix), channel, message)
+	end
 end
 
 handlers["NOTICE"] = function(o, prefix, channel, message)
@@ -67,6 +72,10 @@ handlers["NICK"] = function(o, prefix, newnick)
 			local oldinfo = users[user.nick]
 			if oldinfo then
 				users[newnick] = oldinfo
+				users[newnick].nick = newnick		
+					if users[newnick].fullhost then		
+						users[newnick].fullhost = users[newnick].nick.."!"..users[newnick].username.."@"..users[newnick].host		
+					end
 				users[user.nick] = nil
 				o:invoke("NickChange", user, newnick, channel)
 			end
@@ -90,6 +99,14 @@ handlers["432"] = needNewNick
 -- ERR_NICKNAMEINUSE
 handlers["433"] = needNewNick
 
+--WHO list		
+handlers["352"] = function(o, prefix, me, channel, name1, host, serv, name, access1 ,something, something2)
+	if o.track_users then
+		local user = {nick=name, host=host, username=name1, serv=serv, access=parseAccess(access1), fullhost=name.."!"..name1.."@"..host}		
+			--print(user.nick,user.host,user.ID,user.serv,user.access)	
+			o.channels[channel].users[user.nick] = user	
+	end		
+end
 --NAMES list
 handlers["353"] = function(o, prefix, me, chanType, channel, names)
 	if o.track_users then
@@ -154,13 +171,15 @@ handlers["MODE"] = function(o, prefix, target, modes, ...)
 			elseif c == "-" then add = false
 			elseif c == "o" then
 				local user = table.remove(optList, 1)
-				o.channels[target].users[user].access.op = add
+				if user and o.channels[target].users[user] then o.channels[target].users[user].access.op = add end
 			elseif c == "h" then
 				local user = table.remove(optList, 1)
-				o.channels[target].users[user].access.halfop = add
+				if user then o.channels[target].users[user].access.halfop = add end
 			elseif c == "v" then
 				local user = table.remove(optList, 1)
-				o.channels[target].users[user].access.voice = add
+				if user then o.channels[target].users[user].access.voice = add end
+			elseif c == "b" or c == "q" then
+				table.remove(optList, 1)
 			end
 		end
 	end
