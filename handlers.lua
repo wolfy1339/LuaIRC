@@ -32,11 +32,10 @@ end
 handlers["JOIN"] = function(o, prefix, channel)
 	local user = parsePrefix(prefix)
 	if o.track_users then
-		if user.nick == o.nick then
+		if user.nick == o.nick and not o.channels[channel] then
 			o.channels[channel] = {users = {}}
-		else
-			o.channels[channel].users[user.nick] = user
 		end
+		o.channels[channel].users[user.nick] = user
 	end
 
 	o:invoke("OnJoin", user, channel)
@@ -102,10 +101,14 @@ handlers["433"] = needNewNick
 --WHO list		
 handlers["352"] = function(o, prefix, me, channel, name1, host, serv, name, access1 ,something, something2)
 	if o.track_users then
-		local user = {nick=name, host=host, username=name1, serv=serv, access=parseAccess(access1), fullhost=name.."!"..name1.."@"..host}		
-			--print(user.nick,user.host,user.ID,user.serv,user.access)	
-			o.channels[channel].users[user.nick] = user	
-	end		
+		local user = {nick=name, host=host, username=name1, serv=serv, access=parseAccess(access1), fullhost=name.."!"..name1.."@"..host}
+		--print(user.nick,user.host,user.ID,user.serv,user.access)
+		if not o.channels[channel] then
+			o.channels[channel] = {users = {}}
+		end
+		o.channels[channel].users[user.nick] = user
+	end
+
 end
 --NAMES list
 --disabled, better to always track everything instead of having it have an empty user with just an "access" field
